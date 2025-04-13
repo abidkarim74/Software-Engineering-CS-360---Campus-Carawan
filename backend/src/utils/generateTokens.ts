@@ -24,7 +24,7 @@ const generateAccessToken = async (username: string | undefined): Promise<string
   return jwt.sign(
     { id: user.id, isAdmin: user.isAdmin, fullname: user.fullname, username: user.username },
     process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: "5m", algorithm: "HS256" }
+    { expiresIn: "50m", algorithm: "HS256" }
   );
 };
 

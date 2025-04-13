@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon --watch src --exec node --loader ts-node/esm src/server.ts"
+    "dev": "nodemon --watch src --exec node --loader ts-node/esm src/server.ts",
+  "start": "node --loader ts-node/esm src/server.ts",
+  "postinstall": "prisma generate"
+  
   },
   "type": "module",
   "keywords": [],

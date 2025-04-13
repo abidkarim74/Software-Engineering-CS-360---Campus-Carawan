@@ -1,12 +1,11 @@
 import axiosJWT from "./axiosInstance";
 import { AuthUser } from "../interfaces/authInterfaces";
-import { useState } from "react";
 
 
-interface User {
-  accessToken: string;
-  [key: string]: any
-}
+// interface User {
+//   accessToken: string;
+//   [key: string]: any
+// }
 
 
 export const refreshToken = async (): Promise<string | null> => {

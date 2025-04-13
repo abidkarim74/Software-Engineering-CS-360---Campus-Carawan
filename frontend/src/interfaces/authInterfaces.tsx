@@ -1,7 +1,8 @@
 export interface AuthUser {
   id: string,
   username: string,
-  fullname:string
+  fullname: string
+  profilePic:string
 }
 
 export interface RegistrationUser {

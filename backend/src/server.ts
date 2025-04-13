@@ -5,7 +5,9 @@ import prisma from "./db/prisma.js";
 import authRoutes from "./routes/auth.routes.js";
 import updateRoutes from "./routes/update.routes.js";
 import generalRoutes from "./routes/general.routes.js"
-import messagesRoutes from "./routes/messages.routes.js"
+import messagesRoutes from "./routes/messages.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
+import rideRoutes from "./routes/ride.routes.js";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import { app, server } from "./socket/socket.js";
@@ -22,7 +24,7 @@ const PORT = 5000;
 // Middleware
 app.use(cors({
   origin: "http://localhost:5173",
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true 
 }));
 app.use(morgan("dev"));
@@ -53,6 +55,8 @@ app.use("/auth", authRoutes);
 app.use("/update", updateRoutes);
 app.use("/general", generalRoutes);
 app.use("/chat", messagesRoutes);
+app.use("/rides", rideRoutes);
+app.use("/notifications/", notificationRoutes);
 
 
 // DATABASE SHUTDOWN

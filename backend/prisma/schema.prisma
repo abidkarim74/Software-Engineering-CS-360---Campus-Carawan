@@ -17,6 +17,15 @@ enum Gender {
   FEMALE
 }
 
+enum VehicleType {
+  FOUR_WHEEL
+  TWO_WHEEL
+  THREE_WHEEL
+  HEAVY
+}
+
+
+
 model Review {
   id         String @id @default(uuid())
   reviewer   User   @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
@@ -32,35 +41,45 @@ model Complain {
 }
 
 model User {
-  id       String @id @default(uuid())
-  email    String @unique
-  username String @unique
+  id       String  @id @default(uuid())
+  email    String  @unique
+  username String  @unique
   fullname String
   password String
-  gender   Gender @default(MALE)
+  gender   Gender  @default(MALE)
+  driver   Boolean @default(false)
 
-  profilePic String?
-  vehiclePic String?
-  type       Type       @default(STUDENT)
-  isAdmin    Boolean    @default(false)
-  phone      String?
-  rating     Int        @default(0)
-  reviews    Review[]
-  complains  Complain[]
+  profilePic  String?
+  isSuspended Boolean    @default(false)
+  type        Type       @default(STUDENT)
+  isAdmin     Boolean    @default(false)
+  phone       String?
+  rating      Float      @default(0.0)
+  reviews     Review[]
+  complains   Complain[]
 
-  conversations Conversation[]
-  messages Message[]
+  conversations    Conversation[]
+  notifications    Notification[]        @relation("UserNotifications")
+  notifiers        Notification[]        @relation("NotifierNotifications")
+  messages         Message[]
+  vehicles         Vehicle?
+  ridesAsPassenger RealTimeCarpoolRide[] @relation("PassengerRides")
+  ridesAsDriver    RealTimeCarpoolRide[] @relation("DriverRides")
+
+  postAsPassenger CarpoolRequestPost[] @relation("PassengerPosts")
+  postAsDriver    CarpoolRequestPost[] @relation("DriverPosts")
 }
 
 model Message {
-  id            String   @id @default(uuid())
-  message       String
-  sender        User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  senderId      String
-  conversation  Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid())
+  message        String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId       String
+  seen Boolean @default(false)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   conversationId String
-  createdAt     DateTime @default(now())
-  editedAt      DateTime @updatedAt
+  createdAt      DateTime     @default(now())
+  editedAt       DateTime     @updatedAt
 }
 
 model Conversation {
@@ -68,4 +87,58 @@ model Conversation {
   name     String
   users    User[]
   messages Message[]
+}
+
+model Vehicle {
+  id          String      @id @default(uuid())
+  type        VehicleType @default(FOUR_WHEEL)
+  name        String
+  numberPlate String
+  model       String
+  color       String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String      @unique
+  vehiclePics String[]
+}
+
+model RealTimeCarpoolRide {
+  id           String   @id @default(uuid())
+  pickLocation String
+  dropLocation String
+  time         DateTime @default(now())
+  cost         Int
+  isAccpted    Boolean  @default(false)
+
+  passenger   User   @relation("PassengerRides", fields: [passengerId], references: [id], onDelete: Cascade)
+  passengerId String
+
+  driver   User?  @relation("DriverRides", fields: [driverId], references: [id], onDelete: Cascade)
+  driverId String
+}
+
+model CarpoolRequestPost {
+  id           String   @id @default(uuid())
+  poster       User     @relation("PassengerPosts", fields: [posterId], references: [id], onDelete: Cascade)
+  posterId     String
+  otherUser    User?    @relation("DriverPosts", fields: [otherId], references: [id], onDelete: Cascade)
+  otherId      String?
+  time         DateTime @default(now()) @updatedAt
+  pickLocation String
+  dropLocation String
+  isAccepted   Boolean  @default(false)
+  caption      String
+  cost         Float
+  departureTime DateTime @default(now())
+  seats Int @default(1)
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  time       DateTime @default(now())
+  message    String
+  read       Boolean  @default(false)
+  userId     String
+  user       User     @relation("UserNotifications", fields: [userId], references: [id])
+  notifierId String
+  notifier   User     @relation("NotifierNotifications", fields: [notifierId], references: [id])
 }

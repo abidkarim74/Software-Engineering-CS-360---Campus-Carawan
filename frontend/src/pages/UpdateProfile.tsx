@@ -1,143 +1,96 @@
-import { getRequest } from "../services/apiRequests";
 import { useEffect, useState, useContext } from "react";
-import { useParams } from "react-router-dom";
+import useFileHandler from "../hooks/useFileHandler";
+import useImageUpload from "../hooks/useImageUpload";
 import { AuthContext } from "../context/authContext";
-import { UserProfileData } from "../interfaces/profileInterfaces";
+import { putRequest } from "../services/apiRequests";
 
 const UpdateProfile = () => {
-  const [user, setUser] = useState<UserProfileData | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const auth = useContext(AuthContext);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
-  const params = useParams();
-  const authContext = useContext(AuthContext);
+  const { selectedFile, previewUrl, handleFileChange } = useFileHandler();
+  const { imageUrl, isLoading, error, uploadImage, setError} = useImageUpload();
 
-  if (!authContext) {
-    throw new Error("AuthContext is undefined. Ensure you are using ProtectedRoute within an AuthProvider.");
-  }
-
-  const { accessToken } = authContext;
+  const handleUpload = async () => {
+    if (selectedFile) {
+      try {
+        setSuccessMessage(null);
+        await uploadImage(selectedFile);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Upload failed');
+      }
+    }
+  };
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (!params.userId) return;
-      setLoading(true);
+    const storeImageInDb = async () => {
+      if (!imageUrl || !auth?.user?.id) return;
       
-        const userData = await getRequest(`/general/profile/${params.userId}`, accessToken,setLoading, setError);
-        setUser(userData);
-      
+      try {
+        const res = await putRequest(
+          { profilePic: imageUrl },
+          `/update/uploads-profilepic/${auth.user.id}`
+        );
+        
+        console.log("Result: ", res);
+        setSuccessMessage('Profile picture updated successfully!');
+        window.location.assign(`/${auth.user.id}`);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to update profile');
+      }
     };
 
-    fetchUserData();
-  }, [params.userId, accessToken]);
+    storeImageInDb();
+  }, [imageUrl, auth?.user?.id]);
 
-  const [profilePic, setProfilePic] = useState<File | null>(null);
-  const [fullName, setFullName] = useState<string>("");
-  const [phoneNumber, setPhoneNumber] = useState<string>("");
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setProfilePic(e.target.files[0]);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!profilePic || !params.userId) return;
-  
-    const formData = new FormData();
-    formData.append("profilePic", profilePic);
-
-    
-  
-    try {
-      setLoading(true);
-      const response = await fetch(`http://127.0.0.1:5000/update/uploads-profilepic/${params.userId}`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`, 
-        },
-        body: formData, 
-      });
-  
-      const data = await response.json();
-      if (response.ok) {
-        setUser((prev) => prev ? { ...prev, profilePic: data.profilePic } : null);
-        alert("Profile picture updated successfully!");
-      } else {
-        setError(data.message);
-      }
-    } catch (err) {
-      setError("Failed to update profile picture");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDetailsSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fullName && !phoneNumber) {
-      alert("Enter at least one field to update!");
-      return;
-    }
-  
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/profile/details/${params.userId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ fullName, phoneNumber }),
-      });
-  
-      const data = await response.json();
-      if (response.ok) {
-        setUser((prev) =>
-          prev ? { ...prev, fullName: data.updatedData.fullName, phoneNumber: data.updatedData.phoneNumber } : null
-        );
-        alert("Profile details updated successfully!");
-      } else {
-        setError(data.message);
-      }
-    } catch (err) {
-      setError("Failed to update profile details");
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  
+  if (!auth) {
+    return null; 
+  }
 
   return (
-    <div className="updateProfile">
-      <h3>Update your profile</h3>
-
-      <form onSubmit={handleSubmit}>
-        <label>Upload Profile Picture:</label>
-        <input type="file" accept="image/*" onChange={handleFileChange} />
-
-        <button type="submit" disabled={loading}>
-          {loading ? "Uploading..." : "Update Profile"}
-        </button>
-
-        {error && <p style={{ color: "red" }}>{error}</p>}
-
-      </form>
-
-      <form onSubmit={handleDetailsSubmit}>
-        <label>Full Name:</label>
-        <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Enter full name" />
-
-        <label>Phone Number:</label>
-        <input type="text" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Enter phone number" />
-
-        <button type="submit" disabled={loading}>
-          {loading ? "Updating..." : "Update Details"}
-        </button>
-      </form>
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-4">Update Profile Picture</h2>
       
+      <input 
+        type="file" 
+        accept="image/*" 
+        onChange={handleFileChange} 
+        disabled={isLoading}
+        className="block mb-4"
+      />
+      
+      {previewUrl && (
+        <div className="mt-4">
+          <p className="font-medium">Selected Image Preview:</p>
+          <img src={previewUrl} alt="Preview" className="mt-2 max-w-[300px] h-auto" />
+          <button 
+            onClick={handleUpload}
+            disabled={isLoading}
+            className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+          >
+            {isLoading ? 'Uploading...' : 'Upload Image'}
+          </button>
+        </div>
+      )}
+
+      {imageUrl && (
+        <div className="mt-4">
+          <p className="font-medium">Uploaded Image:</p>
+          <img src={imageUrl} alt="Uploaded" className="mt-2 max-w-[300px] h-auto" />
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-4 p-2 text-red-500 bg-red-50 rounded">
+          Error: {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mt-4 p-2 text-green-500 bg-green-50 rounded">
+          {successMessage}
+        </div>
+      )}
     </div>
   );
 };

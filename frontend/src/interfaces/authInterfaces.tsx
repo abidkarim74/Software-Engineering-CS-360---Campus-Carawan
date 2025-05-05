@@ -2,7 +2,9 @@ export interface AuthUser {
   id: string,
   username: string,
   fullname: string
-  profilePic:string
+  profilePic: string
+  driver: boolean,
+  isSuspended: boolean
 }
 
 export interface RegistrationUser {

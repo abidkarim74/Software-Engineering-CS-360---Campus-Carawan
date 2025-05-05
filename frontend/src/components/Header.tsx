@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBars,
@@ -6,9 +6,11 @@ import {
   faEnvelope,
   faAngleDown,
   faSearch,
-  faMoon,
-  faSun,
+  faHome,
+  faFire,
 } from "@fortawesome/free-solid-svg-icons";
+import SearchBarSmall from "./sub/SearchBarSmall";
+import SearchBarDesktop from "./sub/SearchResult";
 import { AuthContext } from "../context/authContext";
 import { Link } from "react-router-dom";
 import DropDown from "./sub/DropDown";
@@ -18,19 +20,16 @@ import { useTheme } from "../context/themeContext";
 import { GeneralContext } from "../context/generalContext";
 import { putRequest } from "../services/apiRequests";
 import blueImage from "../static/blue.png";
-import whiteImage from "../static/white.png";
 
 const Header: React.FC = () => {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
-  const { darkMode, toggleTheme } = useTheme();
+  const { darkMode } = useTheme();
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   const auth = useContext(AuthContext);
   if (!auth) return <div>Loading...</div>;
   const { user } = auth;
-
- 
-  
 
   const generalContext = useContext(GeneralContext);
   if (!generalContext) {
@@ -42,6 +41,23 @@ const Header: React.FC = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    if (isMobileMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isMobileMenuOpen]);
 
   const [isSearchOpen, setSearchOpen] = useState<boolean>(false);
   const [isDropOpen, setDropOpen] = useState<boolean>(false);
@@ -69,64 +85,71 @@ const Header: React.FC = () => {
     setSearchOpen(false);
   };
 
-  // Modern dark mode colors
+  // Updated to heavier blue theme
   const headerBg = darkMode
-    ? "bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800"
-    : "bg-gradient-to-r from-blue-900 via-blue-600 to-blue-900";
+    ? "bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900"
+    : "bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600";
 
   const textColor = darkMode ? "text-gray-100" : "text-white";
   const hoverTextColor = darkMode
-    ? "hover:text-gray-300"
+    ? "hover:text-blue-300"
     : "hover:text-blue-200";
-  const mobileMenuBg = darkMode ? "bg-gray-800" : "bg-white";
-  const mobileMenuText = darkMode ? "text-gray-100" : "text-black";
-  const searchInputBg = darkMode
-    ? "bg-gray-700 border-gray-600 placeholder-gray-400 text-gray-100 focus:bg-gray-600 focus:border-blue-400"
-    : "bg-gray-100 border-gray-300 placeholder-gray-400 text-gray-900 focus:bg-white focus:border-blue-500";
+
+  const iconColor = darkMode ? "text-gray-300" : "text-blue-100";
+  const hoverIconColor = darkMode
+    ? "hover:text-blue-200"
+    : "hover:text-white";
+
+  const mobileMenuBg = darkMode ? "bg-blue-900" : "bg-blue-600";
+  const mobileMenuText = darkMode ? "text-gray-100" : "text-white";
+
+  // Button styles
+  const fixed = screenWidth > 850 && "mr-40";
+  const iconButtonStyle = `cursor-pointer text-lg transition-all duration-200 ${iconColor} ${hoverIconColor} hover:scale-110`;
+  const mobileMenuItemStyle = darkMode
+    ? "text-base py-2 px-4 rounded-lg transition-colors hover:bg-blue-800 hover:text-blue-200"
+    : "text-base py-2 px-4 rounded-lg transition-colors hover:bg-blue-500 hover:text-white";
+
+  // Navigation links
+  const navLinks = [
+    { to: "/", icon: faHome, text: "Home" },
+    { to: "/trending", icon: faFire, text: "Trending" },
+  ];
 
   return (
     <header
-      className={`flex items-center justify-between ${headerBg} px-3 py-1 shadow-md ${textColor} sticky top-0 z-50 h-14`} // Changed height to h-14 (3.5rem)
+      className={`flex items-center justify-between ${headerBg} px-4 py-2 sticky top-0 z-50 h-14 shadow-lg`}
     >
-      {/* Logo and Search */}
       <div className="flex items-center">
-        <div className="rounded-full transition-colors duration-200 flex items-center">
+        <div className="rounded-full transition-all duration-300 flex items-center hover:rotate-12">
           <img
-            src={darkMode ? blueImage : whiteImage}
+            src={blueImage}
             alt={darkMode ? "Dark mode" : "Light mode"}
             className="w-8 h-8 sm:w-10 sm:h-10 object-contain cursor-pointer hover:scale-105 transition-transform"
           />
         </div>
         {screenWidth > 1000 && (
-          <div className="ml-2">
-            <input
-              type="text"
-              placeholder="Search..."
-              className={`w-full max-w-xs px-3 py-1.5 rounded-full border ${searchInputBg} focus:ring-2 focus:ring-blue-300 outline-none shadow-sm transition-all duration-300 text-sm`}
-            />
-          </div>
+          <SearchBarDesktop darkMode={darkMode}></SearchBarDesktop>
         )}
       </div>
 
-      {/* Desktop Navigation */}
-      {screenWidth > 700 ? (
-        <nav className={`flex gap-4 ${textColor}`}>
-          <Link to="/" className={`hover:underline ${hoverTextColor} text-sm`}>
-            Home
-          </Link>
-          <Link to="#" className={`hover:underline ${hoverTextColor} text-sm`}>
-            Ride Request
-          </Link>
-          <Link to="#" className={`hover:underline ${hoverTextColor} text-sm`}>
-            Ride History
-          </Link>
-          <Link to="#" className={`hover:underline ${hoverTextColor} text-sm`}>
-            Complain
-          </Link>
+      {screenWidth >= 720 ? (
+        <nav className={`${fixed} flex gap-6 ${textColor}`}>
+          {navLinks.map((link) => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className={`flex items-center gap-1 ${hoverTextColor} text-sm font-medium transition-all`}
+              title={link.text}
+            >
+              <FontAwesomeIcon icon={link.icon} className="text-base" />
+              <span className="hidden sm:inline">{link.text}</span>
+            </Link>
+          ))}
         </nav>
       ) : (
         <button
-          className={`text-xl ${hoverTextColor}`}
+          className={iconButtonStyle}
           onClick={() => setMobileMenuOpen(!isMobileMenuOpen)}
         >
           <FontAwesomeIcon icon={faBars} />
@@ -134,12 +157,12 @@ const Header: React.FC = () => {
       )}
 
       {/* Icons Section */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-5">
         {screenWidth <= 1000 && (
           <FontAwesomeIcon
             icon={faSearch}
             onClick={() => setSearchOpen(!isSearchOpen)}
-            className={`cursor-pointer text-lg ${hoverTextColor}`}
+            className={iconButtonStyle}
           />
         )}
 
@@ -147,10 +170,10 @@ const Header: React.FC = () => {
           <FontAwesomeIcon
             icon={faEnvelope}
             onClick={handleMessengerOpen}
-            className={`cursor-pointer text-xl transition-all duration-300 ${hoverTextColor} hover:scale-110`}
+            className={iconButtonStyle}
           />
           {generalContext.unreadMessagesCount > 0 && (
-            <div className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
+            <div className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] animate-pulse">
               {generalContext.unreadMessagesCount}
             </div>
           )}
@@ -162,24 +185,30 @@ const Header: React.FC = () => {
           <FontAwesomeIcon
             icon={faBell}
             onClick={handleNewNotificationsOpen}
-            className={`cursor-pointer text-xl transition-all duration-300 ${hoverTextColor} hover:scale-110`}
+            className={iconButtonStyle}
           />
           {generalContext.unreadNotificationCount > 0 && (
-            <div className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
+            <div className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] animate-pulse">
               {generalContext.unreadNotificationCount}
             </div>
           )}
         </div>
-        {isNotificationsOpen && <NotificationBar />}
+        {isNotificationsOpen && <NotificationBar onClose={() => setNotificationOpen(false)} />}
 
-        <Link to={`/${user?.id}`} className="relative">
+        <Link to={`/profile/${user?.id}`} className="relative">
           <div
-            className={`w-8 h-8 rounded-full p-[1px] ${darkMode ? "bg-gradient-to-r from-gray-700 to-gray-500" : "bg-gradient-to-r from-blue-800 to-blue-500"} transition-all hover:scale-110`}
+            className={`w-8 h-8 rounded-full p-[1px] ${
+              darkMode
+                ? "bg-gradient-to-r from-blue-700 to-blue-500"
+                : "bg-gradient-to-r from-blue-700 to-blue-600"
+            } transition-all hover:scale-110 shadow-md`}
           >
             <img
               src={user?.profilePic}
               alt="Profile"
-              className="w-full h-full object-cover rounded-full border border-transparent hover:border-blue-300"
+              className={`w-full h-full object-cover rounded-full border-2 ${
+                darkMode ? "border-blue-800" : "border-blue-500"
+              }`}
             />
           </div>
         </Link>
@@ -187,79 +216,49 @@ const Header: React.FC = () => {
         <FontAwesomeIcon
           onClick={() => setDropOpen(!isDropOpen)}
           icon={faAngleDown}
-          className={`cursor-pointer text-xl transition-all duration-300 ${hoverTextColor} hover:scale-110`}
+          className={iconButtonStyle}
         />
       </div>
-      {isDropOpen && <DropDown />}
+      {isDropOpen && <DropDown onClose={() => setDropOpen(false)} />}
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="fixed top-14 left-0 w-full h-[calc(100vh-56px)] bg-black bg-opacity-50 flex justify-center items-start z-50">
           <div
-            className={`${mobileMenuBg} ${mobileMenuText} shadow-lg rounded-b-md p-4 flex flex-col gap-3 w-full`}
+            ref={mobileMenuRef}
+            className={`${mobileMenuBg} ${mobileMenuText} shadow-xl rounded-b-lg p-5 flex flex-col gap-2 w-full max-w-md animate-slideDown`}
           >
             <button
-              className={`absolute top-2 right-2 text-xl ${mobileMenuText}`}
+              className={`absolute top-3 right-3 ${
+                darkMode ? "text-gray-300" : "text-blue-100"
+              } text-xl rounded-full w-8 h-8 flex items-center justify-center ${
+                darkMode ? "hover:bg-blue-800" : "hover:bg-blue-700"
+              }`}
               onClick={() => setMobileMenuOpen(false)}
             >
               ✕
             </button>
-            <Link
-              to="/"
-              className={`text-base py-2 px-3 rounded ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-200"}`}
-            >
-              Home
-            </Link>
-            <Link
-              to="#"
-              className={`text-base py-2 px-3 rounded ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-200"}`}
-            >
-              Ride Request
-            </Link>
-            <Link
-              to="#"
-              className={`text-base py-2 px-3 rounded ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-200"}`}
-            >
-              Ride History
-            </Link>
-            <Link
-              to="#"
-              className={`text-base py-2 px-3 rounded ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-200"}`}
-            >
-              Complain
-            </Link>
-            <button
-              onClick={toggleTheme}
-              className={`text-base py-2 px-3 rounded flex items-center gap-2 ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-200"}`}
-            >
-              <FontAwesomeIcon icon={darkMode ? faSun : faMoon} />
-              {darkMode ? "Light Mode" : "Dark Mode"}
-            </button>
+            
+            {navLinks.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={mobileMenuItemStyle}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <FontAwesomeIcon icon={link.icon} className="mr-2" />
+                {link.text}
+              </Link>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Search Modal */}
-      {isSearchOpen && (
-        <div className="fixed top-14 left-0 w-full h-[calc(100vh-56px)] flex justify-center items-start z-50 pt-4">
-          <div
-            className={`${mobileMenuBg} ${mobileMenuText} shadow-lg rounded-md p-4 w-[95%] max-w-lg ${darkMode ? "bg-opacity-95" : "bg-opacity-90"}`}
-          >
-            <button
-              className={`absolute top-2 right-2 text-xl ${mobileMenuText}`}
-              onClick={() => setSearchOpen(false)}
-            >
-              ✕
-            </button>
-            <input
-              type="text"
-              placeholder="Search..."
-              className={`w-full px-4 py-2 rounded-full border ${darkMode ? "border-gray-600 bg-gray-700 text-white focus:border-blue-400" : "border-gray-300 bg-white text-black focus:border-blue-500"} outline-none text-base shadow-md focus:ring-2 focus:ring-blue-300`}
-            />
-            <div className="mt-2 text-center text-sm">No Search Results</div>
-          </div>
-        </div>
-      )}
+      <SearchBarSmall
+        darkMode={darkMode}
+        isSearchOpen={isSearchOpen}
+        setSearchOpen={setSearchOpen}
+      ></SearchBarSmall>
     </header>
   );
 };

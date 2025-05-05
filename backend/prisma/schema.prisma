@@ -24,20 +24,31 @@ enum VehicleType {
   HEAVY
 }
 
-
+model DefaultImage {
+  id String @id @default(uuid())
+  imageUrl String
+}
 
 model Review {
   id         String @id @default(uuid())
-  reviewer   User   @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  rating     Int
+  
+  user       User   @relation("UserReviews", fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  
+  reviewer   User   @relation("ReviewerReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
   reviewerId String
-  comment    String
 }
 
+
 model Complain {
-  id           String @id @default(uuid())
-  complainer   User   @relation(fields: [complainerId], references: [id], onDelete: Cascade)
+  id           String   @id @default(uuid())
+  complainer   User     @relation("ComplainerRelation", fields: [complainerId], references: [id], onDelete: Cascade)
   complainerId String
   complain     String
+  target       User     @relation("TargetRelation", fields: [targetId], references: [id])
+  targetId     String
+  createdAt    DateTime @default(now())
 }
 
 model User {
@@ -48,15 +59,18 @@ model User {
   password String
   gender   Gender  @default(MALE)
   driver   Boolean @default(false)
+  warnings Int     @default(0)
 
-  profilePic  String?
-  isSuspended Boolean    @default(false)
-  type        Type       @default(STUDENT)
-  isAdmin     Boolean    @default(false)
-  phone       String?
-  rating      Float      @default(0.0)
-  reviews     Review[]
-  complains   Complain[]
+  profilePic     String?
+  isSuspended    Boolean    @default(false)
+  type           Type       @default(STUDENT)
+  isAdmin        Boolean    @default(false)
+  phone          String?
+  rating         Float      @default(0.0)
+  complaintsMade Complain[] @relation("ComplainerRelation")
+  complains      Complain[] @relation("TargetRelation")
+  reviews Review[]  @relation("UserReviews")  // This connects to Review's user field
+  reviewsWritten Review[] @relation("ReviewerReviews")
 
   conversations    Conversation[]
   notifications    Notification[]        @relation("UserNotifications")
@@ -68,6 +82,10 @@ model User {
 
   postAsPassenger CarpoolRequestPost[] @relation("PassengerPosts")
   postAsDriver    CarpoolRequestPost[] @relation("DriverPosts")
+
+  // isVerified                    Boolean   @default(false)
+  // verificationToken             String?
+  // verificationTokenExpiresAt    DateTime?
 }
 
 model Message {
@@ -75,7 +93,8 @@ model Message {
   message        String
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
   senderId       String
-  seen Boolean @default(false)
+  clean Boolean @default(false)
+  seen           Boolean      @default(false)
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   conversationId String
   createdAt      DateTime     @default(now())
@@ -98,7 +117,7 @@ model Vehicle {
   color       String
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String      @unique
-  vehiclePics String[]
+  vehiclePics String
 }
 
 model RealTimeCarpoolRide {
@@ -117,19 +136,22 @@ model RealTimeCarpoolRide {
 }
 
 model CarpoolRequestPost {
-  id           String   @id @default(uuid())
-  poster       User     @relation("PassengerPosts", fields: [posterId], references: [id], onDelete: Cascade)
-  posterId     String
-  otherUser    User?    @relation("DriverPosts", fields: [otherId], references: [id], onDelete: Cascade)
-  otherId      String?
-  time         DateTime @default(now()) @updatedAt
-  pickLocation String
-  dropLocation String
-  isAccepted   Boolean  @default(false)
-  caption      String
-  cost         Float
-  departureTime DateTime @default(now())
-  seats Int @default(1)
+  id            String   @id @default(uuid())
+  poster        User     @relation("PassengerPosts", fields: [posterId], references: [id], onDelete: Cascade)
+  posterId      String
+  otherUser     User?    @relation("DriverPosts", fields: [otherId], references: [id], onDelete: Cascade)
+  otherId       String?
+  time          DateTime @default(now()) @updatedAt
+  pickLocation  String
+  pickCordinate Int[]    @default([])
+  dropCordinate Int[]    @default([])
+  dropLocation  String
+  isAccepted    Boolean  @default(false)
+  isSuccessful  Boolean  @default(false)
+  caption       String
+  cost          Float
+  departureTime String
+  seats         Int      @default(1)
 }
 
 model Notification {
@@ -141,4 +163,12 @@ model Notification {
   user       User     @relation("UserNotifications", fields: [userId], references: [id])
   notifierId String
   notifier   User     @relation("NotifierNotifications", fields: [notifierId], references: [id])
+}
+
+model EmailVerification {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  otp       String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }

@@ -42,6 +42,33 @@ const ConversationBar: React.FC<ConversationBarProps> = ({
 
   if (!auth || !generalContext) return null;
 
+
+  if (auth.user?.isSuspended) {
+    return (
+      <div
+        className={`flex items-center justify-center mt-5 px-4 ${
+          darkMode ? "bg-[bg-gray-900]" : "bg-white"
+        }`}
+      >
+        <div
+          className={`border rounded-2xl shadow-xl p-8 max-w-md text-center ${
+            darkMode
+              ? "bg-[bg-gray-500] border-gray-700 text-gray-100"
+              : "bg-[bg-gray-500] border-gray-200 text-gray-800"
+          }`}
+        >
+          <h3 className="text-lg md:text-xl font-semibold mb-4">
+            Your account has been suspended
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Please contact the admin for more information or assistance.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+
   const accessToken = auth.accessToken;
 
  

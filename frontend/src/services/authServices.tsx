@@ -36,8 +36,7 @@ export const loginUser = async (
     return res.data.accessToken;
 
   } catch (err: any) {
-    const errorMessage = err.response?.data?.message || err.message || "An unknown error occurred";
-    setError(errorMessage);
+    setError(err.response.data.error);
     return null;
   } finally {
     setLoading(false);
@@ -60,7 +59,7 @@ export const signupUser = async (
     return accessToken;
 
   } catch (err: any) {
-    setError(err.message);
+    setError(err.response.data.error);
 
   } finally {
     setLoading(false);
@@ -76,7 +75,7 @@ export const getUser = async (accessToken: string): Promise<any> => {
       withCredentials: true,
     });
 
-    console.log("THIS: ", res.data);
+    console.log("THIS00000: ", res.data);
     return res.data;
   } catch (err) {
     console.error("Error fetching user data:", err);

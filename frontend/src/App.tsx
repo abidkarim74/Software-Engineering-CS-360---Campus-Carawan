@@ -5,15 +5,19 @@ import LoginForm from "./pages/Login";
 import ProtectedRoute from "./context/ProtectedRoutes";
 import UserProfile from "./pages/UserProfile";
 import Dashboard from "./pages/Dashboard";
+import ChangePassword from "./pages/ChangePassword";
+import Settings from "./pages/Settings";
+import RideDetailPage from "./pages/RideDetailPage";
 import Signup from "./pages/Signup";
 import Header from "./components/Header";
 import { AuthContext } from "./context/authContext";
 import CreateRidePost from "./pages/CreateRidePost";
-import { useTheme } from "./context/themeContext"; // Import the theme context
+import { useTheme } from "./context/themeContext";
 import { useSocketContext } from "./context/socketContext";
 import UnauthenticatedHeader from "./components/UnauthenticatedHeader";
 import { GeneralContext } from "./context/generalContext";
 import UpdateVehicleInfo from "./pages/UpdateVehicleInfo";
+import Trending from "./pages/Trending";
 
 const App: React.FC = () => {
   const auth = useContext(AuthContext);
@@ -24,9 +28,8 @@ const App: React.FC = () => {
       </div>
     );
 
-
-
   const { darkMode } = useTheme();
+
   const { socket } = useSocketContext();
   const [notifications, setNotifications] = useState<any[]>([]);
   console.log(notifications);
@@ -38,29 +41,52 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!socket) return;
-    
-    const handleNewMessage = (newMessage: any) => {
-      const isCurrentUser = newMessage.sender.id === auth.user?.id;
-      const isExistingConversation = generalContext.conversationIds.includes(
-        newMessage.conversationId
-      );
-
-      const latestMessage = {
-        id: newMessage.id,
-        message: newMessage.message
-      }
-
-
   
-      if (!isExistingConversation && !isCurrentUser) {
-        generalContext.setLatestMessage(latestMessage);
-
+    const handleNewMessage = (newMessage: any) => {
+      console.log("New Message received:", newMessage);
+      // document.title = "New Message"!
+      
+      // Explicit check for message sender
+      const isFromOtherUser = newMessage.sender?.id && newMessage.sender.id !== auth.user?.id;
+      if (!isFromOtherUser) return;
+  
+      // Update latest message (only for messages from others)
+      generalContext.setLatestMessage({
+        id: newMessage.id,
+        message: newMessage.message,
+      });
+  
+      // Check if conversation exists
+      const existingConversation = generalContext.conversationIds.find(
+        conv => conv.id === newMessage.conversationId
+      );
+  
+      if (existingConversation) {
+        // Only update if conversation was previously seen
+        if (!existingConversation.unseen) {
+          generalContext.setConversationIds(prev => 
+            prev.map(conv => 
+              conv.id === newMessage.conversationId
+                ? { ...conv, unseen: true }
+                : conv
+            )
+          );
+          generalContext.setUnreadMessagesCount(prev => prev + 1);
+        }
+      } else {
+        // Add new conversation with unseen true
+        generalContext.setConversationIds(prev => [
+          ...prev,
+          {
+            id: newMessage.conversationId,
+            unseen: true,
+            // Add other conversation properties as needed
+            lastMessage: newMessage.message,
+            timestamp: new Date().toISOString(),
+            // ... other required fields
+          }
+        ]);
         generalContext.setUnreadMessagesCount(prev => prev + 1);
-        generalContext.setConversationIds(prev => 
-          prev.includes(newMessage.conversationId) 
-            ? prev 
-            : [...prev, newMessage.conversationId]
-        );
       }
     };
   
@@ -68,10 +94,24 @@ const App: React.FC = () => {
     return () => {
       socket.off("newMessage", handleNewMessage);
     };
-  }, [socket, generalContext, auth.user]);
+  }, [
+    socket, 
+    auth.user?.id,
+    generalContext.conversationIds, 
+    generalContext.setLatestMessage,
+    generalContext.setConversationIds,
+    generalContext.setUnreadMessagesCount
+  ]);
 
-  console.log(generalContext.conversationIds);
 
+  if (generalContext.notificationsOn) {
+    
+
+    
+  }
+
+
+  
   useEffect(() => {
     if (!socket) return;
 
@@ -83,13 +123,16 @@ const App: React.FC = () => {
       );
     };
 
-    socket.on("newNotification", handleNewNotifications);
+    if (generalContext.notificationsOn) {
+      socket.on("newNotification", handleNewNotifications);
+
+      
+    }
+
     return () => {
       socket.off("newNotification", handleNewNotifications);
     };
   }, [socket, generalContext.unreadNotificationCount]);
-
- 
 
   // Dark mode background and text colors
   const appBackground = darkMode
@@ -129,7 +172,7 @@ const App: React.FC = () => {
             element={!auth.user ? <LoginForm /> : <Navigate to="/" />}
           />
           <Route
-            path="/:userId"
+            path="/profile/:userId"
             element={
               <ProtectedRoute>
                 <UserProfile />
@@ -152,13 +195,42 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           ></Route>
+          <Route
+            path="/ride/:postId"
+            element={
+              <ProtectedRoute>
+                <RideDetailPage></RideDetailPage>
+              </ProtectedRoute>
+            }
+          ></Route>
+          <Route
+            path="/trending"
+            element={
+              <ProtectedRoute>
+                <Trending></Trending>
+              </ProtectedRoute>
+            }
+          ></Route>
+
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings></Settings>
+              </ProtectedRoute>
+            }
+          ></Route>
+          <Route
+            path="/settings/change-password"
+            element={
+              <ProtectedRoute>
+                <ChangePassword></ChangePassword>
+              </ProtectedRoute>
+            }
+          ></Route>
         </Routes>
       </main>
 
-      {/* You might want to add a footer here with dark mode support */}
-      {/* <footer className={`py-6 ${darkMode ? 'bg-gray-800' : 'bg-gray-200'}`}>
-        Footer content
-      </footer> */}
     </div>
   );
 };

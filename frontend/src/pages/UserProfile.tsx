@@ -1,99 +1,141 @@
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { AuthContext } from "../context/authContext";
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useRef } from "react";
 import { getRequest } from "../services/apiRequests";
-import { Link } from "react-router-dom";
+import ComplainForm from "../components/sub/ComplainForm";
+import ProfilePicUpload from "../components/sub/ProfilePicUpload";
+import RatingPopup from "../components/sub/RatingPopup";
+
 import {
   FiEdit,
-  FiTrash2,
   FiStar,
   FiPhone,
   FiUser,
   FiShield,
   FiAlertCircle,
   FiMessageSquare,
+  FiPlus,
+  FiTruck,
+  FiCamera,
 } from "react-icons/fi";
 import { useTheme } from "../context/themeContext";
 import { FaCar } from "react-icons/fa";
-import UploadImage from "./Test";
+
+interface Complaint {
+  id: string;
+  complain: string;
+  createdAt: string;
+  targetId: string;
+}
+
+interface Vehicle {
+  name: string;
+  model: string;
+  numberPlate: string;
+  color: string;
+  vehiclePics?: string;
+}
+
+interface Profile {
+  id: string;
+  fullname: string;
+  username: string;
+  profilePic?: string;
+  isAdmin: boolean;
+  driver: boolean;
+  isSuspended: boolean;
+  rating?: number;
+  reviews?: any[];
+  complains?: Complaint[];
+  phone?: string;
+  gender?: string;
+  vehicles?: Vehicle;
+}
 
 const UserProfile = () => {
   const { darkMode } = useTheme();
-  const { userId } = useParams();
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const { userId } = useParams<{ userId: string }>();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showComplaints, setShowComplaints] = useState(false);
+  const [showComplainForm, setShowComplainForm] = useState(false);
+  const [showPicOptions, setShowPicOptions] = useState(false);
+  const [showRating, setShowRating] = useState<boolean>(false);
 
-  const authContext = useContext(AuthContext);
-  if (!authContext) {
-    throw new Error(
-      "AuthContext is undefined. Make sure you are using ProtectedRoute within an AuthProvider."
-    );
-  }
-  const { accessToken } = authContext;
+  const picOptionsRef = useRef<HTMLDivElement>(null);
+
+  const auth = useContext(AuthContext);
+  if (!auth) throw new Error("AuthContext is undefined.");
+  const { accessToken, user } = auth;
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (!userId) return;
+    if (!userId) return;
+    const fetchUser = async () => {
       setLoading(true);
+      setError(null);
       try {
-        const userData = await getRequest(
+        const data = await getRequest(
           `/general/profile/${userId}`,
           accessToken,
           setLoading,
           setError
         );
-        setProfile(userData);
-      } catch (error) {
-        setError("Failed to fetch user profile.");
+        setProfile(data);
+      } catch {
+        setError("Failed to fetch user profile. Please try again later.");
       } finally {
         setLoading(false);
       }
     };
-
-    fetchUserData();
+    fetchUser();
   }, [userId, accessToken]);
 
-  // Color variables for dark/light mode
-  const bgColor = darkMode
-    ? "bg-gray-900 text-gray-50"
-    : "bg-white text-gray-900";
+  // Close profile pic options when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        picOptionsRef.current &&
+        !picOptionsRef.current.contains(event.target as Node)
+      ) {
+        setShowPicOptions(false);
+      }
+    };
 
-  
-  
-  
-  const cardBg = darkMode
-    ? "bg-gray-800 border-gray-700"
-    : "bg-white border-gray-200";
+    if (showPicOptions) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
 
-  const textColor = darkMode ? "text-gray-100" : "text-gray-900";
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showPicOptions]);
 
+  // Blue color scheme
+  const bgColor = darkMode ? "bg-gray-900" : "bg-white";
+  const cardBg = darkMode ? "bg-gray-800" : "bg-white";
+  const textColor = darkMode ? "text-gray-100" : "text-gray-800";
   const secondaryText = darkMode ? "text-gray-400" : "text-gray-600";
-
-  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
-
-  // const buttonHover = darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100";
-
-  const coverBg = darkMode
-    ? "bg-gradient-to-r from-gray-800 to-gray-900"
-    : "bg-gradient-to-r from-blue-500 to-indigo-600";
-
-  // const accentColor = darkMode ? "text-blue-400" : "text-blue-600";
-
+  const borderColor = darkMode ? "border-gray-700" : "border-blue-100";
+  const coverBg = darkMode ? "bg-blue-900" : "bg-blue-600";
   const buttonBg = darkMode
-    ? "bg-gray-700 hover:bg-gray-600"
-    : "bg-blue-100 hover:bg-blue-200";
+    ? "bg-blue-600 hover:bg-blue-700"
+    : "bg-blue-600 hover:bg-blue-700";
+  const accentColor = "text-blue-400";
+  const highlightColor = darkMode ? "bg-blue-900" : "bg-blue-100";
+  const buttonText = "text-white";
 
-  if (loading)
+  if (loading) {
     return (
       <div className={`flex justify-center items-center h-screen ${bgColor}`}>
-        <div
-          className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${darkMode ? "border-blue-400" : "border-blue-500"}`}
-        ></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
+  }
 
-  if (error)
+  if (error) {
     return (
       <div className={`flex justify-center items-center h-screen ${bgColor}`}>
         <div
@@ -103,162 +145,289 @@ const UserProfile = () => {
         </div>
       </div>
     );
+  }
 
   return (
-    <div
-      className={`min-h-screen ${bgColor} py-8 px-4 sm:px-6 lg:px-8 transition-colors duration-300`}
-    >
+    <div className={`min-h-screen ${bgColor} py-8 px-4 sm:px-6 lg:px-8`}>
       {profile ? (
         <div className="max-w-4xl mx-auto">
-          {/* Profile Header */}
           <div
-            className={`${cardBg} shadow-xl rounded-xl overflow-hidden border ${borderColor} transition-colors duration-300`}
+            className={`${cardBg} shadow-lg rounded-lg overflow-hidden border ${borderColor} mb-8 transition-all duration-300 hover:shadow-xl`}
           >
-            {/* Cover Photo */}
             <div className={`h-48 ${coverBg} relative`}>
-              <div className="absolute -bottom-16 left-6">
-                <div
-                  className={`h-32 w-32 rounded-full border-4 ${darkMode ? "border-gray-800" : "border-white"} shadow-lg overflow-hidden`}
-                >
-                  <img
-                    
-                    src={profile.profilePic || "/default-profile.png"}
-                    alt={`${profile.fullname || "User"}'s Profile`}
-                    className="h-full w-full object-cover"
-                  />
+              <div
+                className="absolute -bottom-16 left-6 cursor-pointer transform hover:scale-105 transition-transform duration-300"
+                onClick={() => setShowPicOptions(true)}
+              >
+                <div className="relative">
+                  <div
+                    className={`h-32 w-32 rounded-full border-4 ${cardBg} shadow-lg overflow-hidden`}
+                  >
+                    <img
+                      src={profile.profilePic || "/default-profile.png"}
+                      alt={`${profile.fullname}'s profile`}
+                      className="h-full w-full object-cover"
+                      onError={(e) =>
+                        (e.currentTarget.src = "/default-profile.png")
+                      }
+                    />
+                  </div>
+                  <div className="absolute bottom-2 right-2 bg-white p-2 rounded-full shadow">
+                    <FiCamera className="text-blue-600" />
+                  </div>
                 </div>
               </div>
+
+              {/* Profile Picture Options Modal */}
+              {showPicOptions && (
+                <ProfilePicUpload
+                  profile={profile}
+                  setShowPicOptions={setShowPicOptions}
+                  picOptionsRef={picOptionsRef}
+                  cardBg={cardBg}
+                  setProfile={setProfile}
+                  darkMode={darkMode}
+                />
+              )}
             </div>
 
-            {/* Profile Info */}
-            <div className="px-6 pt-20 pb-6 relative">
+            <div className="px-6 pt-20 pb-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between">
-                {/* User Info */}
                 <div className="flex-1">
                   <div className="flex flex-col sm:flex-row sm:items-end justify-between">
                     <div>
                       <h1 className={`text-3xl font-bold ${textColor}`}>
                         {profile.fullname}
                       </h1>
-                      <p className={`${secondaryText} text-lg`}>
+                      <p className={`${secondaryText} text-sm`}>
                         @{profile.username}
                       </p>
                     </div>
-                    <div className="flex space-x-2 mt-4 sm:mt-0">
+                    <div className="mt-4 sm:mt-0">
                       <Link
                         to={`/${userId}/update`}
-                        className={`flex items-center px-4 py-2 rounded-lg ${buttonBg} ${textColor} transition-all`}
+                        className={`flex items-center px-4 py-2 rounded-lg ${buttonBg} ${buttonText} text-sm font-medium transition-colors duration-300`}
                       >
                         <FiEdit className="mr-2" /> Edit Profile
                       </Link>
-                      <button
-                        className={`flex items-center px-4 py-2 rounded-lg ${darkMode ? "bg-gray-700 hover:bg-gray-600 text-red-400" : "bg-red-100 hover:bg-red-200 text-red-700"} transition-all`}
-                      >
-                        <FiTrash2 className="mr-2" /> Remove
-                      </button>
                     </div>
                   </div>
-
-                  {/* Badges */}
                   <div className="mt-4 flex flex-wrap gap-2">
                     {profile.isAdmin && (
                       <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${darkMode ? "bg-purple-900 text-purple-200" : "bg-purple-100 text-purple-800"}`}
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                          darkMode
+                            ? "bg-blue-900 text-blue-200"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
                       >
-                        <FiShield className="mr-2" /> Admin
+                        <FiShield className="mr-1" /> Admin
                       </span>
                     )}
                     {profile.driver && (
                       <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${darkMode ? "bg-green-900 text-green-200" : "bg-green-100 text-green-800"}`}
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                          darkMode
+                            ? "bg-blue-900 text-blue-200"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
                       >
-                        <FaCar className="mr-2" /> Driver
+                        <FaCar className="mr-1" /> Driver
                       </span>
                     )}
                     {profile.isSuspended && (
                       <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${darkMode ? "bg-red-900 text-red-200" : "bg-red-100 text-red-800"}`}
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                          darkMode
+                            ? "bg-red-900 text-red-200"
+                            : "bg-red-100 text-red-800"
+                        }`}
                       >
-                        <FiAlertCircle className="mr-2" /> Suspended
+                        <FiAlertCircle className="mr-1" /> Suspended
                       </span>
                     )}
-                    <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${darkMode ? "bg-gray-700 text-gray-200" : "bg-gray-100 text-gray-800"}`}
-                    >
-                      <FiUser className="mr-2" /> {profile.type}
-                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Stats */}
             <div
-              className={`border-t ${borderColor} ${darkMode ? "bg-gray-700" : "bg-gray-50"} px-6 py-4`}
+              className={`border-t ${borderColor} ${
+                darkMode ? "bg-gray-700" : "bg-blue-50"
+              } px-4 py-3`}
             >
-              <div className="flex flex-wrap justify-between">
-                <div className={`flex items-center ${secondaryText}`}>
-                  <FiStar
-                    className={`${darkMode ? "text-yellow-300" : "text-yellow-500"} mr-2`}
-                  />
-                  <span className="font-medium">{profile.rating || 0}/5</span>
-                  <span className="ml-1">
-                    ({profile.reviews?.length || 0} reviews)
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-3 sm:gap-0">
+                <div
+                  className={`flex items-center gap-2 ${secondaryText} text-sm`}
+                >
+                  <FiStar className={`${accentColor} mr-1`} />
+                  <span className="font-medium">{profile.rating ?? "N/A"}</span>
+                  <span className="ml-1">({profile.reviews?.length ?? 0})</span>
+
+                  {userId !== auth.user?.id && (
+                    <button
+                      onClick={() => setShowRating(!showRating)}
+                      className="bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-2 py-0.5 rounded"
+                    >
+                      Rate
+                    </button>
+                  )}
+                </div>
+
+                {showRating && (
+                  <RatingPopup
+                    userId={profile.id}
+                    onClose={() => setShowRating(false)}
+                  ></RatingPopup>
+                )}
+                <div className={`flex items-center text-sm flex-wrap`}>
+                  <FiMessageSquare className="text-rose-500 mr-1" />
+                  <span className="flex items-center gap-1 flex-wrap">
+                    <span
+                      className={`${darkMode ? "text-rose-300" : "text-rose-700"}`}
+                    >
+                      {profile.complains?.length ?? 0} complaints
+                    </span>
+                    <button
+                      onClick={() => setShowComplaints(true)}
+                      className={`ml-1 px-2 py-1 rounded-md font-medium border ${
+                        darkMode
+                          ? "border-rose-700 text-rose-300 hover:bg-rose-900/30"
+                          : "border-rose-300 text-rose-700 hover:bg-rose-50"
+                      } transition-colors duration-300 flex items-center`}
+                    >
+                      <span>View</span>
+                    </button>
+                    {user?.id !== userId && (
+                      <button
+                        onClick={() => setShowComplainForm((v) => !v)}
+                        className={`ml-1 px-2 py-1 rounded-md font-medium border ${
+                          darkMode
+                            ? "border-rose-700 text-rose-300 hover:bg-rose-900/30"
+                            : "border-rose-300 text-rose-700 hover:bg-rose-50"
+                        } transition-colors duration-300 flex items-center`}
+                      >
+                        <span>Add</span>
+                      </button>
+                    )}
                   </span>
                 </div>
-                <div className={`flex items-center ${secondaryText}`}>
-                  <FiMessageSquare
-                    className={`${darkMode ? "text-blue-300" : "text-blue-500"} mr-2`}
-                  />
-                  <span>{profile.complains?.length || 0} complaints</span>
+                <div className={`flex items-center ${secondaryText} text-sm`}>
+                  <FiPhone className="text-blue-400 mr-1" />
+                  <span>{profile.phone || "No phone"}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Details Section */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Personal Info Card */}
+          {showComplainForm && (
+            <ComplainForm
+              targetId={profile.id}
+              darkMode={darkMode}
+              onClose={() => setShowComplainForm(false)}
+            />
+          )}
+
+          {showComplaints && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div
+                className="absolute inset-0 bg-black bg-opacity-40 backdrop-blur-sm"
+                onClick={() => setShowComplaints(false)}
+              ></div>
+              <div
+                className={`relative z-10 ${cardBg} rounded-xl shadow-xl w-11/12 max-w-md p-6 max-h-[80vh] overflow-y-auto`}
+              >
+                <h2 className={`text-lg font-bold mb-4 ${textColor}`}>
+                  Complaints
+                </h2>
+                <ul className="space-y-2">
+                  {profile.complains && profile.complains.length > 0 ? (
+                    profile.complains.map((c, i) => (
+                      <li
+                        key={i}
+                        className={`p-3 rounded-lg ${
+                          darkMode
+                            ? "bg-gray-700 text-gray-200"
+                            : "bg-blue-50 text-gray-800"
+                        }`}
+                      >
+                        <p>{c.complain}</p>
+                        <p className={`text-xs mt-1 ${secondaryText}`}>
+                          {new Date(c.createdAt).toLocaleDateString()}
+                        </p>
+                      </li>
+                    ))
+                  ) : (
+                    <p className={secondaryText}>No complaints found.</p>
+                  )}
+                </ul>
+                <button
+                  onClick={() => setShowComplaints(false)}
+                  className={`mt-4 px-4 py-2 ${buttonBg} ${buttonText} rounded-lg transition-colors duration-300`}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div
-              className={`${cardBg} shadow-xl rounded-xl p-6 border ${borderColor} transition-colors duration-300`}
+              className={`${cardBg} shadow-sm rounded-lg p-5 border ${borderColor} transition-all duration-300 hover:shadow-md`}
             >
               <h2
-                className={`text-xl font-semibold ${textColor} mb-5 pb-2 border-b ${borderColor}`}
+                className={`text-lg font-semibold ${textColor} mb-4 pb-2 border-b ${borderColor}`}
               >
                 Personal Information
               </h2>
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <FiUser className={`${secondaryText} mr-3 text-lg`} />
+              <div className="space-y-3">
+                <div className="flex items-center p-3 rounded-lg hover:bg-blue-50 hover:dark:bg-blue-900/30 transition-colors duration-300">
+                  <div
+                    className={`w-8 h-8 rounded-full ${highlightColor} flex items-center justify-center mr-3`}
+                  >
+                    <FiUser className="text-blue-500" />
+                  </div>
                   <div>
-                    <p className={`text-sm ${secondaryText}`}>Username</p>
+                    <p className={`text-xs ${secondaryText}`}>Username</p>
                     <p className={`${textColor} font-medium`}>
                       @{profile.username}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center">
-                  <FiUser className={`${secondaryText} mr-3 text-lg`} />
+                <div className="flex items-center p-3 rounded-lg hover:bg-blue-50 hover:dark:bg-blue-900/30 transition-colors duration-300">
+                  <div
+                    className={`w-8 h-8 rounded-full ${highlightColor} flex items-center justify-center mr-3`}
+                  >
+                    <FiUser className="text-blue-500" />
+                  </div>
                   <div>
-                    <p className={`text-sm ${secondaryText}`}>Full Name</p>
+                    <p className={`text-xs ${secondaryText}`}>Full Name</p>
                     <p className={`${textColor} font-medium`}>
                       {profile.fullname}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center">
-                  <FiUser className={`${secondaryText} mr-3 text-lg`} />
+                <div className="flex items-center p-3 rounded-lg hover:bg-blue-50 hover:dark:bg-blue-900/30 transition-colors duration-300">
+                  <div
+                    className={`w-8 h-8 rounded-full ${highlightColor} flex items-center justify-center mr-3`}
+                  >
+                    <FiUser className="text-blue-500" />
+                  </div>
                   <div>
-                    <p className={`text-sm ${secondaryText}`}>Gender</p>
+                    <p className={`text-xs ${secondaryText}`}>Gender</p>
                     <p className={`${textColor} font-medium capitalize`}>
                       {profile.gender || "Not specified"}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center">
-                  <FiPhone className={`${secondaryText} mr-3 text-lg`} />
+                <div className="flex items-center p-3 rounded-lg hover:bg-blue-50 hover:dark:bg-blue-900/30 transition-colors duration-300">
+                  <div
+                    className={`w-8 h-8 rounded-full ${highlightColor} flex items-center justify-center mr-3`}
+                  >
+                    <FiPhone className="text-blue-500" />
+                  </div>
                   <div>
-                    <p className={`text-sm ${secondaryText}`}>Phone</p>
+                    <p className={`text-xs ${secondaryText}`}>Phone</p>
                     <p className={`${textColor} font-medium`}>
                       {profile.phone || "Not provided"}
                     </p>
@@ -267,89 +436,98 @@ const UserProfile = () => {
               </div>
             </div>
 
-            {/* Vehicle Info Card - Only shown if user is a driver */}
-
-            <div
-              className={`${cardBg} shadow-xl rounded-xl p-6 border ${borderColor} transition-colors duration-300`}
-            >
-              <div className="flex items-center justify-between mb-5 pb-2 border-b ${borderColor}">
-                <h2 className={`text-xl font-semibold ${textColor}`}>
-                  Vehicle Information
-                </h2>
-                <Link
-                  to={`/update-vehicle-info`}
-                  className={`flex items-center px-3 py-1.5 rounded-lg ${buttonBg} ${textColor} transition-all text-sm hover:opacity-90`}
-                >
-                  <FiEdit className="mr-2" /> Update
-                </Link>
-              </div>
-
-              {profile.vehicles && profile.vehicles.length > 0 ? (
-                <div className="space-y-5">
-                  {profile.vehicles.map((vehicle: any) => (
-                    <div
-                      key={vehicle.id}
-                      className={`p-4 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className={`font-semibold ${textColor}`}>
-                          {vehicle.model} ({vehicle.type})
-                        </h3>
-                        <span
-                          className={`text-sm px-3 py-1 rounded-full ${darkMode ? "bg-gray-600 text-gray-100" : "bg-blue-100 text-blue-800"}`}
-                        >
-                          {vehicle.color}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className={secondaryText}>License Plate</p>
-                          <p className={textColor}>{vehicle.numberPlate}</p>
-                        </div>
-                        <div>
-                          <p className={secondaryText}>Name</p>
-                          <p className={textColor}>{vehicle.name}</p>
-                        </div>
-                      </div>
-                      {vehicle.vehiclePics &&
-                        vehicle.vehiclePics.length > 0 && (
-                          <div className="mt-4">
-                            <h4
-                              className={`text-sm font-medium mb-2 ${secondaryText}`}
-                            >
-                              Vehicle Photos
-                            </h4>
-                            <div className="grid grid-cols-2 gap-2">
-                              {vehicle.vehiclePics.map(
-                                (pic: string, index: number) => (
-                                  <img
-                                    key={index}
-                                    src={pic}
-                                    alt={`Vehicle ${index + 1}`}
-                                    className="rounded-lg w-full h-24 object-cover"
-                                  />
-                                )
-                              )}
-                            </div>
-                          </div>
-                        )}
-                    </div>
-                  ))}
+            {profile.driver && (
+              <div
+                className={`${cardBg} shadow-sm rounded-lg p-5 border ${borderColor} transition-all duration-300 hover:shadow-md`}
+              >
+                <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+                  <h2 className={`text-lg font-semibold ${textColor}`}>
+                    Vehicle Information
+                  </h2>
+                  <Link
+                    to="/update-vehicle-info"
+                    className={`flex items-center px-3 py-1 rounded-lg ${buttonBg} ${buttonText} text-xs font-medium transition-colors duration-300`}
+                  >
+                    <FiEdit className="mr-1" /> Edit
+                  </Link>
                 </div>
-              ) : (
-                <p className={secondaryText}>
-                  No vehicle information available
-                </p>
-              )}
-            </div>
+                {profile.vehicles ? (
+                  <div className="space-y-4">
+                    {profile.vehicles.vehiclePics && (
+                      <div className="relative w-full h-40 rounded-lg overflow-hidden mb-3 border border-blue-200 dark:border-blue-900">
+                        <img
+                          src={profile.vehicles.vehiclePics}
+                          alt={`${profile.vehicles.name} photo`}
+                          className="w-full h-full object-cover"
+                          onError={(e) =>
+                            (e.currentTarget.src = "/default-vehicle.png")
+                          }
+                        />
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="p-2 rounded-lg hover:bg-blue-50 hover:dark:bg-blue-900/30">
+                        <p className={`${secondaryText} text-xs`}>Make</p>
+                        <p className={textColor}>
+                          {profile.vehicles.name || "—"}
+                        </p>
+                      </div>
+                      <div className="p-2 rounded-lg hover:bg-blue-50 hover:dark:bg-blue-900/30">
+                        <p className={`${secondaryText} text-xs`}>Model</p>
+                        <p className={textColor}>
+                          {profile.vehicles.model || "—"}
+                        </p>
+                      </div>
+                      <div className="p-2 rounded-lg hover:bg-blue-50 hover:dark:bg-blue-900/30">
+                        <p className={`${secondaryText} text-xs`}>Plate</p>
+                        <p className={textColor}>
+                          {profile.vehicles.numberPlate || "Not registered"}
+                        </p>
+                      </div>
+                      <div className="p-2 rounded-lg hover:bg-blue-50 hover:dark:bg-blue-900/30">
+                        <p className={`${secondaryText} text-xs`}>Color</p>
+                        <p className={textColor}>
+                          {profile.vehicles.color || "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className={`text-center py-6 rounded-lg ${highlightColor} border border-blue-200 dark:border-blue-900`}
+                  >
+                    <FiTruck
+                      className={`mx-auto text-2xl mb-2 text-blue-500`}
+                    />
+                    <p className={`${textColor} mb-1`}>No vehicle registered</p>
+                    <Link
+                      to="/update-vehicle-info"
+                      className={`inline-flex items-center px-3 py-1 rounded-lg ${buttonBg} ${buttonText} text-xs font-medium transition-colors duration-300`}
+                    >
+                      <FiPlus className="mr-1" /> Add Vehicle
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
+          {profile.driver && (
+            <div className="mt-8 text-center">
+              <button
+                className={`px-8 py-3 rounded-lg ${buttonBg} ${buttonText} font-medium hover:bg-blue-700 transition-colors duration-300 shadow-lg hover:shadow-xl`}
+              >
+                Go Online
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className={`flex justify-center items-center h-screen ${bgColor}`}>
           <div
-            className={`${cardBg} shadow-xl rounded-xl p-8 max-w-md text-center border ${borderColor}`}
+            className={`${cardBg} shadow-lg rounded-lg p-6 max-w-md text-center border ${borderColor}`}
           >
-            <h2 className={`text-2xl font-semibold ${textColor} mb-3`}>
+            <h2 className={`text-xl font-semibold ${textColor} mb-3`}>
               User not found
             </h2>
             <p className={secondaryText}>

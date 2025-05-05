@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import prisma from "../db/prisma.js";
-import { generateAccessToken, generateRefreshToken } from "../utils/generateTokens.js";
+import { generateAccessToken} from "../utils/generateTokens.js";
 
 
 declare global {
@@ -11,6 +11,8 @@ declare global {
         id: string;
         username: string;
         fullname: string;
+        driver: boolean,
+        isSuspended: boolean
       };
     }
   }
@@ -37,7 +39,10 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET as string) as DecodedToken;
 
-      const user = await prisma.user.findUnique({ where: { username: decoded.username } });
+      const user = await prisma.user.findUnique({
+        where: { username: decoded.username },
+        select: {username:true, fullname:true, id:true, driver:true, isSuspended:true}
+      });
 
       if (!user) {
         res.status(403).json("User not found!");
@@ -58,7 +63,10 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET as string) as DecodedToken;
 
-    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id }, select: {
+      username:true, id:true, driver:true, fullname:true, isSuspended:true
+    } });
 
     if (!user) {
       res.status(403).json("User not found!");

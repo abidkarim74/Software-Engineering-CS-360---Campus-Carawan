@@ -1,23 +1,40 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useRef, useEffect } from "react";
 import { AuthContext } from "../../context/authContext";
 import { logoutUser } from "../../services/authServices";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTheme } from "../../context/themeContext";
+import { Settings, User, LogOut } from "react-feather";
 
+interface DropDownProps {
+  onClose: () => void;
+}
 
-const DropDown = () => {
+const DropDown: React.FC<DropDownProps> = ({ onClose }) => {
   const auth = useContext(AuthContext);
-  const { darkMode, toggleTheme } = useTheme();
-  const [loading, setLoading] = useState(false);
+  const { darkMode } = useTheme();
+  const [loading, setLoading] = useState<boolean>(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
 
   if (!auth) return <div className="text-gray-500">Loading...</div>;
 
   const { accessToken, setUser } = auth;
 
-  const handleLogout = async () => {
+  const handleLogout = async (): Promise<void> => {
     setLoading(true);
     try {
       await logoutUser(setUser, accessToken);
+      navigate("/login");
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
@@ -27,33 +44,61 @@ const DropDown = () => {
 
   return (
     <div
-      className={`absolute top-full right-3 border border-gray-200 rounded-lg shadow-lg py-2 z-50
-        w-[95%] sm:w-[20%] ${darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"}`}
+      ref={dropdownRef}
+      className={`
+        absolute top-12 right-0 rounded-lg shadow-xl py-1 z-50 w-48
+        ${darkMode ? 
+          "bg-gray-800 text-white border border-gray-700" : 
+          "bg-white text-gray-900 border border-gray-200"
+        }
+      `}
     >
       <Link
-        to="#"
-        className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-200"
+        to="/settings"
+        onClick={onClose}
+        className={`
+          flex items-center px-4 py-3 transition duration-150
+          ${darkMode ? 
+            "hover:bg-gray-700" : 
+            "hover:bg-gray-50"  // Lighter hover for light mode
+          }
+        `}
       >
-        Settings
+        <Settings size={18} className="mr-3" />
+        <span>Settings</span>
       </Link>
+
       <Link
-        to="#"
-        className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-200"
+        to={`/profile/${auth.user?.id}`}
+        onClick={onClose}
+        className={`
+          flex items-center px-4 py-3 transition duration-150
+          ${darkMode ? 
+            "hover:bg-gray-700" : 
+            "hover:bg-gray-50"  // Lighter hover for light mode
+          }
+        `}
       >
-        Update
+        <User size={18} className="mr-3" />
+        <span>Profile</span>
       </Link>
-      <button
-        onClick={toggleTheme}
-        className="w-full text-left px-4 py-2 transition duration-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-      >
-        {darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-      </button>
+
+      <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+
       <button
         onClick={handleLogout}
         disabled={loading}
-        className="w-full text-left px-4 py-2 transition duration-200 text-red-600 hover:bg-red-100 dark:hover:bg-red-700 disabled:opacity-50"
+        className={`
+          flex items-center w-full text-left px-4 py-3 transition duration-150 
+          ${darkMode ? 
+            "text-red-400 hover:bg-red-900/30" : 
+            "text-red-500 hover:bg-red-50"  // Lighter hover for light mode
+          }
+          disabled:opacity-50
+        `}
       >
-        {loading ? "Logging out..." : "Logout"}
+        <LogOut size={18} className="mr-3" />
+        <span>{loading ? "Logging out..." : "Logout"}</span>
       </button>
     </div>
   );

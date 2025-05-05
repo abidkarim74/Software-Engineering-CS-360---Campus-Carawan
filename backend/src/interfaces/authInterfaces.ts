@@ -1,5 +1,5 @@
 import { JwtPayload } from "jsonwebtoken";
-import { Request } from "express";
+
 
 export interface AuthUser {
   id: string;
@@ -9,13 +9,6 @@ export interface AuthUser {
   isAdmin: boolean;
 }
 
-export interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    username: string;
-    fullname: string;
-  };
-}
 
 
 export interface DecodedToken extends JwtPayload {

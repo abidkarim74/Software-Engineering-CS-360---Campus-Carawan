@@ -1,6 +1,6 @@
 import { Router } from "express";
 import verify from "../middleware/protectRoute.js";
-import { getUserConversations, startConversation, getConversation, sendMessage, updateMessages, getUnreadConversationsCount, readMessages, unreadMessagesExist } from "../controllers/messagesControllers.js";
+import { getUserConversations, startConversation, getConversation, sendMessage, updateMessages, getUnreadConversationsCount, readMessages, unreadMessagesExist, filterMessages } from "../controllers/messagesControllers.js";
 
 
 const router = Router();
@@ -11,6 +11,8 @@ router.get("/conversations", verify, getUserConversations);
 router.get("/conversation/:conversationId", verify, getConversation);
 router.put("/update-messages", verify, updateMessages);
 router.get("/get-unread-count", verify, getUnreadConversationsCount);
+router.get("/filter-messages/:conversationId", verify, filterMessages);
+
 router.put("/:conversationId/read-messages", verify, readMessages);
 router.get("/:conversationId/unread-messages-exist", verify, unreadMessagesExist);
 

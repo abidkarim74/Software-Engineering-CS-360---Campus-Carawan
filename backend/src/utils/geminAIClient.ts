@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI, Part } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "YOUR_DEFAULT_KEY");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 
 export const checkForInappropriateContent = async (messageStrings: string[]): Promise<"yes" | "no"> => {
